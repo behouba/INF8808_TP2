@@ -7,61 +7,86 @@ from modes import MODE_TO_COLUMN
 
 def summarize_lines(my_df):
     '''
-        Sums each player's total of number of lines and  its
+        Sums each player's total of number of lines and its
         corresponding percentage per act.
-
-        The sum of lines per player per act is in a new
-        column named 'PlayerLine'.
-
-        The percentage of lines per player per act is
-        in a new column named 'PlayerPercent'
-
-        Args:
-            my_df: The pandas dataframe containing the data from the .csv file
-        Returns:
-            The modified pandas dataframe containing the
-            information described above.
     '''
-    # TODO : Modify the dataframe, removing the line content and replacing
-    # it by line count and percent per player per act
-    return my_df
+
+    # On ne garde que les colonnes utiles
+    df = my_df[['Act', 'Player']].copy()
+
+    # Compter le nombre de lignes par joueur et par acte
+    df = (
+        df
+        .groupby(['Act', 'Player'])
+        .size()
+        .reset_index(name='LineCount')
+    )
+
+    # Calcul du total de lignes par acte
+    total_per_act = df.groupby('Act')['LineCount'].transform('sum')
+
+    # Calcul du pourcentage par joueur dans chaque acte
+    df['LinePercent'] = df['LineCount'] / total_per_act * 100
+
+    return df
 
 
 def replace_others(my_df):
     '''
-        For each act, keeps the 5 players with the most lines
-        throughout the play and groups the other plyaers
-        together in a new line where :
-
-        - The 'Act' column contains the act
-        - The 'Player' column contains the value 'OTHER'
-        - The 'LineCount' column contains the sum
-            of the counts of lines in that act of
-            all players who are not in the top
-            5 players who have the most lines in
-            the play
-        - The 'PercentCount' column contains the sum
-            of the percentages of lines in that
-            act of all the players who are not in the
-            top 5 players who have the most lines in
-            the play
-
-        Returns:
-            The df with all players not in the top
-            5 for the play grouped as 'OTHER'
+        Groups players outside the top 5 speakers into 'OTHER'
+        for each act.
     '''
-    # TODO : Replace players in each act not in the top 5 by a
-    # new player 'OTHER' which sums their line count and percentage
-    return my_df
+
+    # Identifier les 5 joueurs avec le plus de lignes sur toute la pièce
+    top_players = (
+        my_df
+        .groupby('Player')['LineCount']
+        .sum()
+        .sort_values(ascending=False)
+        .head(5)
+        .index
+    )
+
+    # Séparer les joueurs du top 5 et les autres
+    df_top = my_df[my_df['Player'].isin(top_players)]
+    df_other = my_df[~my_df['Player'].isin(top_players)]
+
+    # Regrouper les autres joueurs par acte
+    df_other = (
+        df_other
+        .groupby('Act')
+        .agg({
+            'LineCount': 'sum',
+            'LinePercent': 'sum'
+        })
+        .reset_index()
+    )
+
+    df_other['Player'] = 'OTHER'
+
+    # Combiner les deux
+    df_final = pd.concat([df_top, df_other], ignore_index=True)
+
+    return df_final
 
 
 def clean_names(my_df):
     '''
-        In the dataframe, formats the players'
-        names so each word start with a capital letter.
-
-        Returns:
-            The df with formatted names
+        Formats player names so each word starts with a capital letter.
     '''
-    # TODO : Clean the player names
+
+    my_df['Player'] = my_df['Player'].str.title()
+
     return my_df
+
+
+
+if __name__ == "__main__":
+    df = pd.read_csv("../assets/data/romeo_and_juliet.csv")
+
+    df = summarize_lines(df)
+    df = replace_others(df)
+    df = clean_names(df)
+
+    print(df.head(20))
+    print("\nColonnes :", df.columns)
