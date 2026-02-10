@@ -21,12 +21,11 @@ def init_figure():
     '''
     fig = go.Figure()
 
-    # TODO : Update the template to include our new theme and set the title
-
     fig.update_layout(
-        template=pio.templates['simple_white'],
+        template=pio.templates['simple_white+custom_theme'],
         dragmode=False,
-        barmode='relative'
+        barmode='relative',
+        title='Lines per act'
     )
 
     return fig
@@ -44,7 +43,23 @@ def draw(fig, data, mode):
             fig: The figure comprising the drawn bar chart
     '''
     fig = go.Figure(fig)  # conversion back to Graph Object
-    # TODO : Update the figure's data according to the selected mode
+    fig.data = []  # clear existing traces
+
+    # Determine which column to use based on mode
+    y_column = MODE_TO_COLUMN[mode]
+
+    # Get sorted unique players for consistent ordering
+    players = data['Player'].unique()
+
+    for player in players:
+        player_data = data[data['Player'] == player]
+        fig.add_trace(go.Bar(
+            x=['Act ' + str(act) for act in player_data['Act']],
+            y=player_data[y_column],
+            name=player,
+            hovertemplate=get_hover_template(player, mode)
+        ))
+
     return fig
 
 
@@ -58,4 +73,9 @@ def update_y_axis(fig, mode):
         Returns: 
             The updated figure
     '''
-    # TODO : Update the y axis title according to the current mode
+    # Update the y axis title based on the current mode
+    if mode == MODES['count']:
+        fig.update_layout(yaxis_title='Lines (Count)')
+    else:
+        fig.update_layout(yaxis_title='Lines (%)')
+    return fig
