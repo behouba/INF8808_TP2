@@ -25,6 +25,14 @@ def get_hover_template(name, mode):
         Returns:
             The hover template with the elements descibed above
     '''
-    # TODO: Generate and return the over template
+    title = f'<span style="font-family: Grenze Gotisch; font-size: 24px; color: black;">{name}</span><br>'
+    
+    if mode == MODES['count']:
+        value = '%{y} lines'
+    else:
+        value = '%{y:.2f}% of lines'
 
-    return ''
+    # extra extra est là pour retirer l'affichage du nom par défault sinon ça affiche en double
+    template = title + value + '<extra></extra>'
+    
+    return template
